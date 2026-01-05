@@ -1,0 +1,152 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.5.6'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id 'com.diffplug.spotless' version '8.0.0'
+    id 'info.solidsoft.pitest' version '1.19.0-rc.2'
+}
+
+group = 'dev.jgregorio'
+version = '0.1.0-SNAPSHOT'
+description = 'Demo Back Project'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    mapstructVersion = '1.5.5.Final'
+    openapiVersion = '2.8.13'
+    jsonwebtokenVersion = '0.13.0'
+    commonsLang3Version = '3.18.0'
+    archunitVersion = '1.4.1'
+    oracleJdbcVersion = 'ojdbc11'
+    pitestJunit5PluginVersion = '1.2.1'
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    implementation "org.mapstruct:mapstruct:${mapstructVersion}"
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:${openapiVersion}") {
+        exclude group: "org.apache.commons", module: "commons-lang3"
+    }
+    // Enforce a specific version of commons-lang3 to address transitive vulnerability warnings
+    implementation "org.apache.commons:commons-lang3:${commonsLang3Version}"
+    implementation "io.jsonwebtoken:jjwt:${jsonwebtokenVersion}"
+
+    compileOnly 'org.projectlombok:lombok'
+
+    annotationProcessor 'org.hibernate.orm:hibernate-jpamodelgen'
+    annotationProcessor 'org.projectlombok:lombok'
+    annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
+
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
+    runtimeOnly 'com.h2database:h2'
+    runtimeOnly "com.oracle.database.jdbc:${oracleJdbcVersion}"
+
+    testImplementation('org.springframework.boot:spring-boot-starter-test') {
+        exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
+    }
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'io.projectreactor:reactor-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:oracle-xe'
+    testImplementation "com.tngtech.archunit:archunit:${archunitVersion}"
+
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    pitest "org.pitest:pitest-junit5-plugin:${pitestJunit5PluginVersion}"
+}
+
+tasks.named('test') {
+    useJUnitPlatform {
+        excludeTags 'oracle'
+    }
+    systemProperty 'user.timezone', 'Europe/Madrid'
+    systemProperty 'spring.profiles.active', 'test'
+}
+
+tasks.register('test-oracle', Test) {
+    group = 'verification'
+    description = 'Runs the Oracle container tests.'
+    useJUnitPlatform {
+        includeTags 'oracle'
+    }
+    testClassesDirs = tasks.named('test', Test).get().testClassesDirs
+    classpath = tasks.named('test', Test).get().classpath
+    systemProperty 'spring.profiles.active', 'test-oracle'
+    shouldRunAfter(tasks.named('test'))
+}
+
+tasks.named('check') {
+    dependsOn(tasks.named('test-oracle'))
+}
+
+springBoot {
+    buildInfo()
+}
+
+tasks.named('processResources') {
+    filesMatching('**/application.yml') {
+        filter(
+                org.apache.tools.ant.filters.ReplaceTokens,
+                tokens: [
+                        'version'    : project.version,
+                        'description': project.description
+                ]
+        )
+    }
+}
+
+spotless {
+    java {
+        target("src/**/*.java")
+        googleJavaFormat('1.28.0')
+        removeUnusedImports()
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+}
+
+tasks.register('installGitHooks', Copy) {
+    description 'Copies the git hooks from scripts/git-hooks to the .git/hooks folder and makes them executable.'
+    group 'git hooks'
+    from(file('scripts/git-hooks')) {
+        include '**/*.sh'
+        exclude 'utils.sh'
+        rename '(.+)\\.sh', '$1'
+    }
+    into file('.git/hooks')
+    filePermissions {
+        user { read = true; write = true; execute = true }
+        group { read = true; execute = true }
+        other { read = true; execute = true }
+    }
+}
+
+
+pitest {
+    threads = 4
+    outputFormats = ['XML', 'HTML']
+    timestampedReports = false
+    excludedGroups = ['excluded-pitest']
+}

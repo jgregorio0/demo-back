@@ -1,0 +1,162 @@
+# ===============================
+# DEFAULT PROFILE
+# ===============================
+# APPLICATION
+server:
+  servlet:
+    context-path: /demo-back
+  port: 8080
+# SPRING
+spring:
+  application:
+    name: demo-back
+    version: '@version@'
+    description: '@description@'
+  # H2 CONSOLE
+  h2:
+    console:
+      enabled: false
+  # DEVTOOLS
+  devtools:
+    livereload:
+      enabled: false
+    restart:
+      enabled: false
+# ACTUATOR
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics # Expose specific endpoints over HTTP
+  endpoint:
+    health:
+      show-details: when_authorized
+# JWT
+jwt:
+  header: Authorization
+  prefijo: Bearer
+  secret: ${JWT_SECRET:ThisIsMySuperSecureAndVeryLongSecretKeyForHS512ThatIs64BytesLong}
+  expiration: 18000
+
+
+# ===============================
+# TEST PROFILE
+# ===============================
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+  profiles:
+    active: test
+  # H2 DATABASE
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    defer-datasource-initialization: true
+    show-sql: true
+    hibernate:
+      ddl-auto: none
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema-h2.sql
+  # H2 CONSOLE
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+# LOGGING
+logging.level.dev.jgregorio.demo.back: DEBUG
+logging.level.org.hibernate.orm.jdbc.bind: TRACE
+
+# ===============================
+# TEST ORACLE PROFILE
+# ===============================
+---
+spring:
+  config:
+    activate:
+      on-profile: test-oracle
+  profiles:
+    active: test-oracle
+  # ORACLE SOURCE
+  datasource:
+    driver-class-name: oracle.jdbc.OracleDriver
+  jpa:
+    database-platform: org.hibernate.dialect.OracleDialect
+    properties:
+      hibernate:
+        default_schema: TEST
+    hibernate:
+      ddl-auto: none
+# LOGGING
+logging.level.dev.jgregorio.demo.back: DEBUG
+logging.level.org.hibernate.orm.jdbc.bind: TRACE
+
+
+# ===============================
+# DEVELOPMENT PROFILE
+# ===============================
+---
+spring:
+  config:
+    activate:
+      on-profile: development
+  # H2 DATABASE
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    defer-datasource-initialization: true
+    show-sql: true
+    hibernate:
+      ddl-auto: none
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema-h2.sql
+  # H2 CONSOLE
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  # DEVTOOLS
+  devtools:
+    livereload:
+      enabled: true
+    restart:
+      enabled: true
+# ACTUATOR
+management:
+  endpoint:
+    health:
+      show-details: always
+# LOGGING
+logging.level.dev.jgregorio.demo.back: DEBUG
+logging.level.org.hibernate.orm.jdbc.bind: TRACE
+
+# ===============================
+# STAGING PROFILE
+# ===============================
+---
+spring:
+  config:
+    activate:
+      on-profile: staging
+
+# ===============================
+# PRODUCTION PROFILE
+# ===============================
+---
+spring:
+  config:
+    activate:
+      on-profile: production
